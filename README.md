@@ -306,6 +306,6 @@ One scanned list (Agra) was excluded because OCR could not reliably recover the 
 ---
 
 ## 12. Team
-
+Chaitanya Peshin, Upendra Yanamandra, Rahul Krishna
 
 *Built for the CMU Databricks Datathon Fall 2026. Facility data © Virtue Foundation; public government data under the Government Open Data License – India where applicable. Swasthya Saathi is a decision-support prototype, not medical advice: in an emergency, call **108**.*
