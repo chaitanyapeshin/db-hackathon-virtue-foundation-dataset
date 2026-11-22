@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<rect x="1" y="1" width="1198" height="598" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="40" y="50" font-size="24" font-weight="700" fill="#0f172a">High tier: the nearest place that claims it is not always the best first stop</text>
+<text x="40" y="76" font-size="15" fill="#64748b">Simplified worked example for an emergency C-section (window 60 min, τ = 45 min). The notebook runs 3,000 random worlds instead.</text>
+<rect x="40" y="105" width="470" height="440" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+<line x1="110" y1="470" x2="270" y2="470" stroke="#94a3b8" stroke-width="3" stroke-dasharray="6 5"/>
+<line x1="110" y1="470" x2="420" y2="200" stroke="#0d9488" stroke-width="4"/>
+<line x1="270" y1="470" x2="420" y2="200" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="3 5"/>
+<text x="352" y="380" font-size="12" font-weight="400" fill="#94a3b8" text-anchor="start">transfer 12 min</text>
+<text x="190" y="494" font-size="14" font-weight="600" fill="#64748b" text-anchor="middle">8 min</text>
+<text x="250" y="318" font-size="14" font-weight="600" fill="#0f766e" text-anchor="end">15 min</text>
+<circle cx="110" cy="470" r="12" fill="#0f172a"/>
+<text x="110" y="506" font-size="14" font-weight="600" fill="#0f172a" text-anchor="middle">patient</text>
+<circle cx="270" cy="470" r="16" fill="#f1f5f9" stroke="#94a3b8" stroke-width="3"/>
+<text x="270" y="476" font-size="16" font-weight="700" fill="#475569" text-anchor="middle">A</text>
+<text x="296" y="466" font-size="14" font-weight="600" fill="#0f172a" text-anchor="start">Clinic A, nearest</text>
+<text x="296" y="485" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">P(can treat) 0.35 · quality 0.60</text>
+<circle cx="420" cy="200" r="16" fill="#ccfbf1" stroke="#0d9488" stroke-width="3"/>
+<text x="420" y="206" font-size="16" font-weight="700" fill="#0f766e" text-anchor="middle">B</text>
+<text x="160" y="145" font-size="14" font-weight="600" fill="#0f172a" text-anchor="start">Hospital B, farther</text>
+<text x="160" y="163" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">P(can treat) 0.90 · quality 0.95</text>
+<text x="160" y="181" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">OT, anaesthesia, blood bank evidenced</text>
+<text x="60" y="532" font-size="12" font-weight="400" fill="#94a3b8" text-anchor="start">+10 min to set off, +10 min handover on a transfer</text>
+<text x="550" y="130" font-size="18" font-weight="700" fill="#0f172a" text-anchor="start">Outcome of a world = quality × e^(−T / τ)</text>
+<text x="550" y="154" font-size="14" font-weight="400" fill="#475569" text-anchor="start">T = minutes until definitive care. A wasted trip costs time; a weak facility costs quality.</text>
+<text x="550" y="200" font-size="17" font-weight="700" fill="#0f172a" text-anchor="start">Plan “nearest first”: A, then B</text>
+<text x="550" y="222" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">35%: treated at A at 18 min · 65%: transferred, treated at B at 40 min</text>
+<rect x="550" y="236" width="460" height="30" rx="8" fill="#e2e8f0"/>
+<rect x="550" y="236" width="171" height="30" rx="8" fill="#94a3b8"/>
+<text x="1022" y="258" font-size="20" font-weight="700" fill="#0f172a" text-anchor="start">0.37</text>
+<text x="550" y="320" font-size="17" font-weight="700" fill="#0f172a" text-anchor="start">Plan “Saathi”: B, then A</text>
+<text x="550" y="342" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">90%: treated at B at 25 min · 10%: transferred to A at 47 min</text>
+<rect x="550" y="356" width="460" height="30" rx="8" fill="#e2e8f0"/>
+<rect x="550" y="356" width="230" height="30" rx="8" fill="#0d9488"/>
+<text x="1022" y="378" font-size="20" font-weight="700" fill="#0f172a" text-anchor="start">0.50</text>
+<text x="550" y="444" font-size="16" font-weight="700" fill="#0f766e" text-anchor="start">Going 7 minutes farther gives a 34% better expected outcome,</text>
+<text x="550" y="466" font-size="16" font-weight="700" fill="#0f766e" text-anchor="start">because a wasted trip to A is likely and A’s care is weaker.</text>
+<text x="550" y="504" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">In the real model each world also re-draws: where the patient is, where each facility</text>
+<text x="550" y="524" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">truly is (location validity), road detours, traffic speed, and whether it is open.</text>
+<text x="550" y="544" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">All ordered pairs of the top 8 candidates are tried; the best plans are reported.</text>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 610" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<rect x="1" y="1" width="1198" height="608" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="40" y="50" font-size="24" font-weight="700" fill="#0f172a">Claim Court: each piece of evidence multiplies the odds</text>
+<text x="40" y="76" font-size="15" fill="#64748b">Illustrative record, real likelihood ratios. Log-odds simply add, so every step can be shown in the HOW card.</text>
+<text x="44" y="118" font-size="13" font-weight="700" fill="#64748b" text-anchor="start">WITNESS</text>
+<text x="560" y="118" font-size="13" font-weight="700" fill="#64748b" text-anchor="start">LIKELIHOOD RATIO</text>
+<text x="720" y="118" font-size="13" font-weight="700" fill="#64748b" text-anchor="start">P(offers emergency C-section) after this step</text>
+<rect x="30" y="140" width="1140" height="54" rx="10" fill="#f8fafc"/>
+<text x="44" y="163" font-size="16" font-weight="600" fill="#0f172a" text-anchor="start">Prior: it is a hospital</text>
+<text x="44" y="183" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">base rate for hospitals</text>
+<text x="560" y="173" font-size="20" font-weight="700" fill="#94a3b8" text-anchor="start">p₀ = 0.25</text>
+<rect x="720" y="155" width="380" height="22" rx="6" fill="#e2e8f0"/>
+<rect x="720" y="155" width="95.0" height="22" rx="6" fill="#94a3b8"/>
+<text x="1112" y="172" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">25%</text>
+<rect x="30" y="202" width="1140" height="54" rx="10" fill="#ffffff"/>
+<text x="44" y="225" font-size="16" font-weight="600" fill="#0f172a" text-anchor="start">Procedure field</text>
+<text x="44" y="245" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">“performs lower-segment caesarean sections”</text>
+<text x="560" y="235" font-size="20" font-weight="700" fill="#2563eb" text-anchor="start">× 6</text>
+<rect x="720" y="217" width="380" height="22" rx="6" fill="#e2e8f0"/>
+<rect x="720" y="217" width="253.5" height="22" rx="6" fill="#2563eb"/>
+<text x="1112" y="234" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">67%</text>
+<rect x="30" y="264" width="1140" height="54" rx="10" fill="#f8fafc"/>
+<text x="44" y="287" font-size="16" font-weight="600" fill="#0f172a" text-anchor="start">Equipment field</text>
+<text x="44" y="307" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">“fully equipped operation theatre, anaesthesia”</text>
+<text x="560" y="297" font-size="20" font-weight="700" fill="#2563eb" text-anchor="start">× 5</text>
+<rect x="720" y="279" width="380" height="22" rx="6" fill="#e2e8f0"/>
+<rect x="720" y="279" width="345.4" height="22" rx="6" fill="#2563eb"/>
+<text x="1112" y="296" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">91%</text>
+<rect x="30" y="326" width="1140" height="54" rx="10" fill="#ffffff"/>
+<text x="44" y="349" font-size="16" font-weight="600" fill="#0f172a" text-anchor="start">Corroboration</text>
+<text x="44" y="369" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">claims agree across ≥ 2 independent fields</text>
+<text x="560" y="359" font-size="20" font-weight="700" fill="#0d9488" text-anchor="start">× 1.5</text>
+<rect x="720" y="341" width="380" height="22" rx="6" fill="#e2e8f0"/>
+<rect x="720" y="341" width="356.4" height="22" rx="6" fill="#0d9488"/>
+<text x="1112" y="358" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">94%</text>
+<rect x="30" y="388" width="1140" height="54" rx="10" fill="#f8fafc"/>
+<text x="44" y="411" font-size="16" font-weight="600" fill="#0f172a" text-anchor="start">Capability bundle</text>
+<text x="44" y="431" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">≥ half of OT, anaesthesia, blood bank, NICU… found</text>
+<text x="560" y="421" font-size="20" font-weight="700" fill="#0d9488" text-anchor="start">× 1.5</text>
+<rect x="720" y="403" width="380" height="22" rx="6" fill="#e2e8f0"/>
+<rect x="720" y="403" width="363.7" height="22" rx="6" fill="#0d9488"/>
+<text x="1112" y="420" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">96%</text>
+<rect x="30" y="450" width="1140" height="54" rx="10" fill="#ffffff"/>
+<text x="44" y="473" font-size="16" font-weight="600" fill="#0f172a" text-anchor="start">Official registry</text>
+<text x="44" y="493" font-size="13" font-weight="400" fill="#64748b" text-anchor="start">LaQshya: maternity OT certified, still valid</text>
+<text x="560" y="483" font-size="20" font-weight="700" fill="#d97706" text-anchor="start">× 10</text>
+<rect x="720" y="465" width="380" height="22" rx="6" fill="#e2e8f0"/>
+<rect x="720" y="465" width="378.5" height="22" rx="6" fill="#d97706"/>
+<text x="1112" y="482" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">99.6%</text>
+<text x="44" y="536" font-size="14" font-weight="400" fill="#334155" text-anchor="start">Evidence against works the same way: a negation (“no dialysis”, “referred to”) ×0.25 · a clinic claiming hospital-level care ×0.4 · a possible merged record ×0.7.</text>
+<text x="44" y="560" font-size="14" font-weight="400" fill="#334155" text-anchor="start">Each answer also carries an uncertainty band (a Beta distribution) that narrows as more independent witnesses agree.</text>
+</svg>

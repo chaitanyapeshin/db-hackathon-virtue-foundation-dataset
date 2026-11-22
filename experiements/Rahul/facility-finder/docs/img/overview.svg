@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+    <linearGradient id="hdr" x1="0" x2="1"><stop offset="0" stop-color="#0f766e"/><stop offset="1" stop-color="#1d4ed8"/></linearGradient>
+  </defs>
+  <rect x="1" y="1" width="1198" height="658" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  <text x="40" y="52" font-size="26" font-weight="700" fill="#0f172a">How a question becomes a recommendation</text>
+  <text x="40" y="80" font-size="15" fill="#64748b">Two inputs, five shared layers, one of three tier models, and an explanation card for every answer</text>
+
+  <!-- inputs -->
+  <rect x="40" y="110" width="250" height="64" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="58" y="136" font-size="13" fill="#64748b">SERVICE (free text)</text>
+  <text x="58" y="160" font-size="17" font-weight="600" fill="#0f172a">"wife in labour, bleeding"</text>
+  <rect x="40" y="194" width="250" height="64" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="58" y="220" font-size="13" fill="#64748b">LOCATION</text>
+  <text x="58" y="244" font-size="17" font-weight="600" fill="#0f172a">"Lucknow" · PIN · lat,lon</text>
+
+  <!-- shared layers -->
+  <rect x="340" y="110" width="250" height="64" rx="12" fill="#fef2f2" stroke="#fca5a5"/>
+  <text x="358" y="136" font-size="13" font-weight="700" fill="#b91c1c">TRIAGE</text>
+  <text x="358" y="158" font-size="14" fill="#334155">clinical time window → tier</text>
+  <rect x="340" y="194" width="250" height="64" rx="12" fill="#f0fdfa" stroke="#5eead4"/>
+  <text x="358" y="220" font-size="13" font-weight="700" fill="#0f766e">LOCATION LAYER</text>
+  <text x="358" y="242" font-size="14" fill="#334155">India Post PINs → cloud of points</text>
+  <line x1="290" y1="142" x2="336" y2="142" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="290" y1="226" x2="336" y2="226" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- facilities + court -->
+  <rect x="640" y="110" width="250" height="148" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="658" y="136" font-size="13" font-weight="700" fill="#1d4ed8">CLAIM COURT · every tier</text>
+  <text x="658" y="160" font-size="14" fill="#334155">quotes from each facility record</text>
+  <text x="658" y="182" font-size="14" fill="#334155">→ Bayesian P(offers service)</text>
+  <text x="658" y="204" font-size="14" fill="#334155">+ location validity (pin vs PIN)</text>
+  <text x="658" y="226" font-size="14" fill="#334155">+ NFHS district context</text>
+  <text x="658" y="246" font-size="12" fill="#64748b">10,088 Virtue Foundation listings</text>
+  <rect x="930" y="110" width="230" height="148" rx="12" fill="#fffbeb" stroke="#fcd34d"/>
+  <text x="948" y="136" font-size="13" font-weight="700" fill="#b45309">REGISTRY · every tier</text>
+  <text x="948" y="160" font-size="14" fill="#334155">LaQshya certified</text>
+  <text x="948" y="182" font-size="14" fill="#334155">labour rooms &amp; maternity OTs</text>
+  <text x="948" y="204" font-size="14" fill="#334155">record linkage → ×10 / ×4</text>
+  <text x="948" y="226" font-size="14" fill="#334155">independent source</text>
+  <line x1="928" y1="184" x2="894" y2="184" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="590" y1="184" x2="636" y2="184" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- router -->
+  <path d="M465,258 L465,300 M765,258 L765,300 M465,300 L765,300 M615,300 L615,318" stroke="#64748b" stroke-width="2" fill="none"/>
+  <line x1="615" y1="318" x2="615" y2="330" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <text x="630" y="322" font-size="13" fill="#64748b">tier decides which model runs</text>
+  <path d="M200,350 L1000,350" stroke="#64748b" stroke-width="2"/>
+  <line x1="200" y1="350" x2="200" y2="372" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="600" y1="350" x2="600" y2="372" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="1000" y1="350" x2="1000" y2="372" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- tiers -->
+  <rect x="40" y="378" width="340" height="150" rx="14" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <text x="60" y="408" font-size="18" font-weight="700" fill="#b91c1c">HIGH · minutes to hours</text>
+  <text x="60" y="436" font-size="15" fill="#334155">Monte-Carlo Plan A → Plan B router</text>
+  <text x="60" y="460" font-size="14" fill="#475569">3,000 simulated journeys: wrong pins,</text>
+  <text x="60" y="480" font-size="14" fill="#475569">traffic, facilities that can't treat</text>
+  <text x="60" y="508" font-size="13" fill="#64748b">trauma · C-section · NICU · stroke · ICU</text>
+
+  <rect x="430" y="378" width="340" height="150" rx="14" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="450" y="408" font-size="18" font-weight="700" fill="#b45309">MEDIUM · hours to days</text>
+  <text x="450" y="436" font-size="15" fill="#334155">Access, need &amp; congestion model</text>
+  <text x="450" y="460" font-size="14" fill="#475569">E2SFCA access · Huff congestion</text>
+  <text x="450" y="480" font-size="14" fill="#475569">weighted score · Dirichlet robustness</text>
+  <text x="450" y="508" font-size="13" fill="#64748b">dialysis · CT · high-risk delivery</text>
+
+  <rect x="820" y="378" width="340" height="150" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="840" y="408" font-size="18" font-weight="700" fill="#1d4ed8">LOW · weeks</text>
+  <text x="840" y="436" font-size="15" fill="#334155">Shortlist + LLM Evidence Court</text>
+  <text x="840" y="460" font-size="14" fill="#475569">prosecutor vs defender, quotes</text>
+  <text x="840" y="480" font-size="14" fill="#475569">fact-checked in code, judge votes</text>
+  <text x="840" y="508" font-size="13" fill="#64748b">cancer care · chemotherapy · MRI</text>
+
+  <!-- output -->
+  <path d="M210,528 L210,566 M600,528 L600,566 M990,528 L990,566 M210,566 L990,566" stroke="#64748b" stroke-width="2" fill="none"/>
+  <line x1="600" y1="566" x2="600" y2="580" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="300" y="584" width="600" height="56" rx="14" fill="url(#hdr)"/>
+  <text x="600" y="610" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">Top 3 options, each with a WHY and a HOW card</text>
+  <text x="600" y="630" font-size="13" fill="#e0f2fe" text-anchor="middle">quoted evidence · probabilities · weights · trade-offs</text>
+</svg>

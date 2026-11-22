@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<rect x="1" y="1" width="1198" height="518" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="40" y="50" font-size="24" font-weight="700" fill="#0f172a">Criticality = the maximum safe delay before treatment</text>
+<text x="40" y="76" font-size="15" fill="#64748b">Each service sits on a log time axis at the window clinical guidance gives it. The tier follows from where it lands.</text>
+<rect x="70.0" y="110" width="382.7" height="310" fill="#fef2f2"/>
+<text x="261.3" y="138" font-size="18" font-weight="700" fill="#b91c1c" text-anchor="middle">HIGH <tspan font-size="13" font-weight="400">≤ 6 hours</tspan></text>
+<rect x="452.7" y="110" width="441.2" height="310" fill="#fffbeb"/>
+<text x="673.3" y="138" font-size="18" font-weight="700" fill="#b45309" text-anchor="middle">MEDIUM <tspan font-size="13" font-weight="400">6 hours – 7 days</tspan></text>
+<rect x="893.8" y="110" width="236.2" height="310" fill="#eff6ff"/>
+<text x="1011.9" y="138" font-size="18" font-weight="700" fill="#1d4ed8" text-anchor="middle">LOW <tspan font-size="13" font-weight="400">> 7 days</tspan></text>
+<line x1="452.7" y1="110" x2="452.7" y2="420" stroke="#94a3b8" stroke-dasharray="5 4"/>
+<line x1="893.8" y1="110" x2="893.8" y2="420" stroke="#94a3b8" stroke-dasharray="5 4"/>
+<line x1="70" y1="420" x2="1130.0" y2="420" stroke="#334155" stroke-width="2"/>
+<line x1="123.7" y1="420" x2="123.7" y2="428" stroke="#334155" stroke-width="2"/><text x="123.7" y="448" font-size="14" fill="#334155" text-anchor="middle">30 min</text>
+<line x1="215.5" y1="420" x2="215.5" y2="428" stroke="#334155" stroke-width="2"/><text x="215.5" y="448" font-size="14" fill="#334155" text-anchor="middle">1 h</text>
+<line x1="399.0" y1="420" x2="399.0" y2="428" stroke="#334155" stroke-width="2"/><text x="399.0" y="448" font-size="14" fill="#334155" text-anchor="middle">4 h</text>
+<line x1="636.2" y1="420" x2="636.2" y2="428" stroke="#334155" stroke-width="2"/><text x="636.2" y="448" font-size="14" fill="#334155" text-anchor="middle">1 day</text>
+<line x1="893.8" y1="420" x2="893.8" y2="428" stroke="#334155" stroke-width="2"/><text x="893.8" y="448" font-size="14" fill="#334155" text-anchor="middle">1 week</text>
+<line x1="1086.5" y1="420" x2="1086.5" y2="428" stroke="#334155" stroke-width="2"/><text x="1086.5" y="448" font-size="14" fill="#334155" text-anchor="middle">1 month</text>
+<line x1="215.5" y1="420" x2="215.5" y2="185" stroke="#dc2626" stroke-width="1.5" opacity=".55"/>
+<circle cx="215.5" cy="420" r="6.5" fill="#dc2626" stroke="#fff" stroke-width="2"/>
+<circle cx="215.5" cy="185" r="3" fill="#dc2626"/>
+<text x="223.5" y="190" font-size="14" fill="#0f172a" text-anchor="start">trauma · C-section · NICU  (1 h)</text>
+<line x1="269.1" y1="420" x2="269.1" y2="220" stroke="#dc2626" stroke-width="1.5" opacity=".55"/>
+<circle cx="269.1" cy="420" r="6.5" fill="#dc2626" stroke="#fff" stroke-width="2"/>
+<circle cx="269.1" cy="220" r="3" fill="#dc2626"/>
+<text x="277.1" y="225" font-size="14" fill="#0f172a" text-anchor="start">heart attack  (90 min)</text>
+<line x1="307.2" y1="420" x2="307.2" y2="255" stroke="#dc2626" stroke-width="1.5" opacity=".55"/>
+<circle cx="307.2" cy="420" r="6.5" fill="#dc2626" stroke="#fff" stroke-width="2"/>
+<circle cx="307.2" cy="255" r="3" fill="#dc2626"/>
+<text x="315.2" y="260" font-size="14" fill="#0f172a" text-anchor="start">bleeding after birth · burns  (2 h)</text>
+<line x1="399.0" y1="420" x2="399.0" y2="290" stroke="#dc2626" stroke-width="1.5" opacity=".55"/>
+<circle cx="399.0" cy="420" r="6.5" fill="#dc2626" stroke="#fff" stroke-width="2"/>
+<circle cx="399.0" cy="290" r="3" fill="#dc2626"/>
+<text x="407.0" y="295" font-size="14" fill="#0f172a" text-anchor="start">ICU  (4 h)</text>
+<line x1="414.6" y1="420" x2="414.6" y2="325" stroke="#dc2626" stroke-width="1.5" opacity=".55"/>
+<circle cx="414.6" cy="420" r="6.5" fill="#dc2626" stroke="#fff" stroke-width="2"/>
+<circle cx="414.6" cy="325" r="3" fill="#dc2626"/>
+<text x="422.6" y="330" font-size="14" fill="#0f172a" text-anchor="start">stroke  (4.5 h)</text>
+<line x1="452.7" y1="420" x2="452.7" y2="360" stroke="#dc2626" stroke-width="1.5" opacity=".55"/>
+<circle cx="452.7" cy="420" r="6.5" fill="#dc2626" stroke="#fff" stroke-width="2"/>
+<circle cx="452.7" cy="360" r="3" fill="#dc2626"/>
+<text x="444.7" y="365" font-size="14" fill="#0f172a" text-anchor="end">emergency dialysis  (6 h)</text>
+<line x1="636.2" y1="420" x2="636.2" y2="185" stroke="#d97706" stroke-width="1.5" opacity=".55"/>
+<circle cx="636.2" cy="420" r="6.5" fill="#d97706" stroke="#fff" stroke-width="2"/>
+<circle cx="636.2" cy="185" r="3" fill="#d97706"/>
+<text x="644.2" y="190" font-size="14" fill="#0f172a" text-anchor="start">CT scan  (1 day)</text>
+<line x1="728.0" y1="420" x2="728.0" y2="245" stroke="#d97706" stroke-width="1.5" opacity=".55"/>
+<circle cx="728.0" cy="420" r="6.5" fill="#d97706" stroke="#fff" stroke-width="2"/>
+<circle cx="728.0" cy="245" r="3" fill="#d97706"/>
+<text x="736.0" y="250" font-size="14" fill="#0f172a" text-anchor="start">dialysis 3×/week  (2 days)</text>
+<line x1="849.3" y1="420" x2="849.3" y2="305" stroke="#d97706" stroke-width="1.5" opacity=".55"/>
+<circle cx="849.3" cy="420" r="6.5" fill="#d97706" stroke="#fff" stroke-width="2"/>
+<circle cx="849.3" cy="305" r="3" fill="#d97706"/>
+<text x="841.3" y="310" font-size="14" fill="#0f172a" text-anchor="end">cardiac surgery  (5 days)</text>
+<line x1="893.8" y1="420" x2="893.8" y2="360" stroke="#d97706" stroke-width="1.5" opacity=".55"/>
+<circle cx="893.8" cy="420" r="6.5" fill="#d97706" stroke="#fff" stroke-width="2"/>
+<circle cx="893.8" cy="360" r="3" fill="#d97706"/>
+<text x="885.8" y="365" font-size="14" fill="#0f172a" text-anchor="end">high-risk delivery  (7 days)</text>
+<line x1="985.6" y1="420" x2="985.6" y2="305" stroke="#2563eb" stroke-width="1.5" opacity=".55"/>
+<circle cx="985.6" cy="420" r="6.5" fill="#2563eb" stroke="#fff" stroke-width="2"/>
+<circle cx="985.6" cy="305" r="3" fill="#2563eb"/>
+<text x="977.6" y="310" font-size="14" fill="#0f172a" text-anchor="end">MRI  (2 weeks)</text>
+<line x1="1086.5" y1="420" x2="1086.5" y2="185" stroke="#2563eb" stroke-width="1.5" opacity=".55"/>
+<circle cx="1086.5" cy="420" r="6.5" fill="#2563eb" stroke="#fff" stroke-width="2"/>
+<circle cx="1086.5" cy="185" r="3" fill="#2563eb"/>
+<text x="1078.5" y="190" font-size="14" fill="#0f172a" text-anchor="end">cancer care  (≈4 weeks)</text>
+<text x="40" y="490" font-size="13" fill="#64748b">Words in the request move it: “bleeding”, “accident”, “unconscious” upgrade (dialysis → emergency dialysis); “scheduled”, “routine” can downgrade Medium → Low, never High.</text></svg>
