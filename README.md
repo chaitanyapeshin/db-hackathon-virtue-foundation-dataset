@@ -65,7 +65,7 @@ A confident wrong answer costs a patient hours they don't have. So we treat ever
 Input: *"papa ke pair sooj gaye, doctor ne dialysis bola"*, location *Jaipur*. Output: a Hindi action plan first (where to go, phone number, backup, Ayushman status, odds), then the full English **WHY / HOW**.
 
 ### Genie agent (patients, NGOs, planners)
-![Genie demo](images/genie_demo.gif)
+![Genie demo](images/swasthya_saathi_gif_genie.gif)
 
 | Patient-style questions in Hinglish | NGO / planner questions |
 |---|---|
