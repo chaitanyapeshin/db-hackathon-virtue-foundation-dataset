@@ -4,11 +4,7 @@
 
 **CMU Datathon Fall 2026 · Databricks × Virtue Foundation · "Find the right care" challenge**
 
-![Swasthya Saathi overview](images/swasthya_saathi_slide_final.png)
-
-🎬 **Demo video (2 min):** [▶ Watch on YouTube](https://youtu.be/TXWzxnP8u2Q) · 🧭 **Pipeline explainer video:** [▶ saathi_pipeline_explainer.mp4](images/saathi_pipeline_explainer.mp4)
-
-[![Watch the demo](https://img.youtube.com/vi/TXWzxnP8u2Q/maxresdefault.jpg)](https://youtu.be/TXWzxnP8u2Q)
+![Swasthya Saathi: problem, solution and demo](images/saathi_pipeline_explainer.gif)
 
 > *"Accident hua hai, behosh hai — kahan le jaayein?"* (There's been an accident, he's unconscious — where do we go?)
 >
@@ -63,7 +59,9 @@ A confident wrong answer costs a patient hours they don't have. So we treat ever
 
 ## 3. Demo
 
-🎬 **Full walkthrough video (2 min):** [▶ YouTube](https://youtu.be/TXWzxnP8u2Q). It covers the approach, the notebook dashboard and the Genie agent.
+🎬 **2-minute demo video:** [▶ Watch on YouTube](https://youtu.be/TXWzxnP8u2Q)
+
+[![Watch the demo](https://img.youtube.com/vi/TXWzxnP8u2Q/maxresdefault.jpg)](https://youtu.be/TXWzxnP8u2Q)
 
 ### Patient / field-worker flow (notebook dashboard)
 
@@ -87,12 +85,9 @@ Example questions that work in Genie:
 
 ## 4. Approach
 
+![Swasthya Saathi at a glance](images/swasthya_saathi_slide_final.png)
+
 ![Offline and online pipeline in detail](images/swasthya_saathi_slide_supp.png)
-
-### 🧭 Pipeline explainer (2 min)
-[![Pipeline explainer](images/saathi_pipeline_explainer.gif)](images/saathi_pipeline_explainer.mp4)
-
-*Click the animation for the full-quality video.*
 
 The system has two halves.
 - **Offline** builds trust in the data once and writes it to Delta tables. It answers *"can this facility really do it?"*
@@ -233,13 +228,12 @@ The extracted, cleaned CSVs are in [`government_lists/`](government_lists/). One
 │   ├── nabh_delhi_ncr_from_cghs.csv
 │   └── deempanel_*.csv             #   de-empanelled / suspended / withdrawn
 ├── images/
+│   ├── saathi_pipeline_explainer.gif          # problem → solution → demo (top of README)
 │   ├── swasthya_saathi_slide_final.png        # overview slide
 │   ├── swasthya_saathi_slide_supp.png         # detailed offline / online pipeline
-│   ├── genie_patient_chat.png
-│   ├── genie_planner_chat.png
 │   ├── swasthya_saathi_gif_genie.gif          # Genie agent demo
-│   ├── saathi_pipeline_explainer.mp4          # pipeline explainer video
-│   └── saathi_pipeline_explainer.gif          # same, as an embedded animation
+│   ├── genie_patient_chat.png
+│   └── genie_planner_chat.png
 └── README.md
 ```
 
