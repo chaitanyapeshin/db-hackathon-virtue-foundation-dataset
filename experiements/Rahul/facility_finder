@@ -1,0 +1,727 @@
+# Databricks notebook source
+# MAGIC %md
+# MAGIC # Facility Finder: an evidence-based facility recommender (CMU Datathon / Virtue Foundation)
+# MAGIC
+# MAGIC **Input:** a *service* (e.g. "dialysis") and a *location* (city, district, PIN code, or `lat,lon`).
+# MAGIC **Output:** a ranked list of facilities. Each one comes with:
+# MAGIC * **WHY**: quoted text from the facility record showing that the facility exists, claims the service, and is near the location.
+# MAGIC * **HOW**: the score breakdown: which evidence counted, how much it counted, what was penalised, and how distance was traded against evidence.
+# MAGIC * **Uncertainty**: a confidence label (High / Medium / Low) plus explicit warnings about data quality.
+# MAGIC
+# MAGIC ### The core idea (first principles)
+# MAGIC The dataset was extracted from web pages, so each row is a *claim*, not a fact. We have **no ground-truth labels**
+# MAGIC (nobody says "facility X really does dialysis"), so a supervised ML model has nothing to learn from. Instead we build a
+# MAGIC **transparent scoring model**:
+# MAGIC
+# MAGIC 1. **Evidence**: how strongly, and in how many *independent fields*, does the record support the service?
+# MAGIC    A specific procedure ("haemodialysis") or piece of equipment ("dialysis machine") counts for more than a broad specialty ("nephrology").
+# MAGIC 2. **Corroboration**: a claim repeated across procedure + equipment + description is more believable than one appearing in a single field.
+# MAGIC 3. **Red flags**: impossible or contradictory coordinates, negations ("no dialysis"), possible duplicate or merged records.
+# MAGIC 4. **Proximity**: distance from the user, scaled by urgency. 20 km matters a lot for an emergency C-section and much less for elective cardiac surgery.
+# MAGIC
+# MAGIC Every number below comes from a rule you can read in this notebook, so any recommendation can be traced back to its rules.
+# MAGIC
+# MAGIC **How to run:** attach to *Serverless* compute (top right), then **Run all**. Set the two boxes (widgets) at the top and re-run the last cells.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 0. Configuration
+# MAGIC `catalog.schema.table` is Unity Catalog's three-level name. When you clicked **Get access** on the Marketplace listing,
+# MAGIC Databricks created a read-only catalog called `databricks_virtue_foundation_dataset_dais_2026` in your workspace.
+# MAGIC Anything we *write* goes to `workspace.default`, the writable catalog every Free Edition workspace has.
+
+# COMMAND ----------
+
+SOURCE_TABLE = "databricks_virtue_foundation_dataset_dais_2026.virtue_foundation_dataset.facilities"
+OUTPUT_SCHEMA = "workspace.default"   # where we save results (for dashboards / Genie later)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 1. Load the data and look at it
+# MAGIC `spark.table(...)` returns a *Spark DataFrame*. It is lazy (nothing is read until you ask for results) and distributed.
+# MAGIC With only ~10k rows, the whole table fits in memory many times over, so we convert it to **pandas** with `.toPandas()`.
+# MAGIC Pandas is simpler to debug, and every scoring rule becomes ordinary Python. Spark is used only to read and to save results.
+
+# COMMAND ----------
+
+sdf = spark.table(SOURCE_TABLE)
+print(f"rows = {sdf.count():,}   columns = {len(sdf.columns)}")
+sdf.printSchema()
+display(sdf.limit(5))     # display() renders an interactive table in Databricks
+
+# COMMAND ----------
+
+raw_pdf = sdf.toPandas()
+
+# Coverage = share of rows where the column is non-empty. This tells us which fields we can lean on.
+def _is_empty(v):
+    if v is None: return True
+    if isinstance(v, float) and v != v: return True          # NaN
+    s = str(v).strip().lower()
+    return s in ("", "[]", "null", "none", "nan", "{}")
+
+coverage = {c: round(100 * (1 - raw_pdf[c].map(_is_empty).mean()), 1) for c in raw_pdf.columns}
+print(sorted(coverage.items(), key=lambda kv: -kv[1]))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 2. Find the columns we need, without hard-coding names
+# MAGIC The brief describes the fields (name, city, postcode, lat/lon, specialties, capability, procedure, equipment, description,
+# MAGIC doctors, beds/capacity, source URLs) but the exact column names can vary (`address_city` vs `city`).
+# MAGIC `pick()` tries a list of candidate names, so the notebook still works if a column is named slightly differently.
+# MAGIC **Check the printed mapping.** If something shows `None` and you know the real name, add it to the list.
+
+# COMMAND ----------
+
+import re, json, math, html
+import numpy as np
+import pandas as pd
+
+def pick(cols, candidates, fuzzy=True):
+    low = {c.lower(): c for c in cols}
+    for cand in candidates:
+        if cand.lower() in low:
+            return low[cand.lower()]
+    if not fuzzy:
+        return None
+    # fallback: substring match (e.g. 'address_zipOrPostcode' for 'postcode')
+    for cand in candidates:
+        for c in cols:
+            if cand.lower() in c.lower():
+                return c
+    return None
+
+COLS = {
+    "id":          ["unique_id", "pk_unique_id", "facility_id", "id"],
+    "name":        ["name", "facility_name", "organization_name"],
+    "city":        ["address_city", "city"],
+    "district":    ["address_district", "district"],
+    "state":       ["address_stateOrRegion", "state", "address_state"],
+    "postcode":    ["address_zipOrPostcode", "postcode", "pincode", "pin_code", "zip"],
+    "address":     ["address_line1", "address", "full_address"],
+    "address2":    ["address_line2"],
+    "address3":    ["address_line3"],
+    "lat":         ["latitude", "lat"],
+    "lon":         ["longitude", "lon", "lng"],
+    "specialties": ["specialties", "specialty"],
+    "capability":  ["capability", "capabilities"],
+    "procedure":   ["procedure", "procedures"],
+    "equipment":   ["equipment"],
+    "description": ["description", "organizationDescription"],
+    "doctors":     ["numberDoctors", "number_doctors", "doctors"],
+    "capacity":    ["capacity", "beds", "number_beds"],
+    "year":        ["yearEstablished", "year_established"],
+    "source_url":  ["source_urls", "source_url"],
+    "website":     ["officialWebsite", "websites"],
+    "phone":       ["officialPhone", "phone_numbers", "phone"],
+    "facility_type": ["facilityTypeId", "facility_type"],
+    "org_type":    ["organization_type"],
+    "cluster":     ["cluster_id"],
+    "last_post":   ["post_metrics_most_recent_social_media_post_date"],
+}
+NO_FUZZY = {"id", "address", "address2", "address3", "district", "cluster", "org_type"}   # substring matching would grab the wrong column for these
+C = {k: pick(list(raw_pdf.columns), v, fuzzy=k not in NO_FUZZY) for k, v in COLS.items()}
+for k, v in C.items():
+    print(f"{k:14s} -> {v}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3. Clean the data
+# MAGIC What the real table looks like (from inspecting it):
+# MAGIC * **Every column is a STRING** except `latitude` / `longitude` (DOUBLE). Numbers like `numberDoctors = "60"` must be converted.
+# MAGIC * **Missing values are the text `"null"`**, not a real NULL, so we treat `"null"` as empty everywhere. Otherwise a city called "null" would appear.
+# MAGIC * **List fields are JSON text** with repeats, e.g. `specialties = '["pediatrics","familyMedicine","familyMedicine","pediatrics"]'`.
+# MAGIC   `to_list()` parses them and removes duplicates.
+# MAGIC * `procedure`, `equipment` and `capability` hold **full sentences** ("Administers pediatric vaccinations"), which make good quotes to cite.
+# MAGIC * Specialties are camelCase codes (`gynecologyAndObstetrics`), which we split into words so keyword matching works.
+# MAGIC * `source_urls` (a JSON list, sometimes containing `null`) holds the pages the record was extracted from. That is our citation link.
+# MAGIC * `address_stateOrRegion` sometimes holds a district (e.g. "Alappuzha") rather than a state. The location search checks city and region.
+
+# COMMAND ----------
+
+NULLS = {"", "null", "none", "nan", "[]", "{}"}
+
+def _dedupe(items):
+    seen, out = set(), []
+    for x in items:
+        k = x.lower()
+        if k not in seen and k not in NULLS:
+            seen.add(k); out.append(x)
+    return out
+
+def to_list(v):
+    if v is None: return []
+    if isinstance(v, float) and v != v: return []
+    if isinstance(v, (list, tuple, np.ndarray)):
+        return _dedupe([str(x).strip() for x in v if x is not None])
+    s = str(v).strip()
+    if s.lower() in NULLS: return []
+    if s.startswith("["):
+        try:
+            return _dedupe([str(x).strip() for x in json.loads(s) if x is not None])
+        except Exception:
+            s = s.strip("[]")
+    return _dedupe([p.strip().strip('"\'') for p in re.split(r'",\s*"|;|\|', s)])
+
+def uncamel(s):
+    return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", s)
+
+def to_text(v):
+    if v is None or (isinstance(v, float) and v != v): return ""
+    s = str(v).strip()
+    return "" if s.lower() in NULLS else s
+
+def to_num(v):
+    try:
+        x = float(str(v).replace(",", "").strip())
+        return x if x == x and x > 0 else None
+    except Exception:
+        return None
+
+def first_url(*values):
+    """First real URL among the given fields (source_urls first, then the official website)."""
+    for v in values:
+        for it in to_list(v) or [to_text(v)]:
+            m = re.search(r"https?://[^\s\"\],]+", it)
+            if m: return m.group(0)
+            if re.fullmatch(r"[\w.-]+\.[a-z]{2,}(/\S*)?", it or ""):   # bare domain like 'smsh.in'
+                return "https://" + it
+    return None
+
+def norm_place(s):
+    return re.sub(r"[^a-z0-9 ]", "", to_text(s).lower()).strip()
+
+def col(name):
+    return raw_pdf[C[name]] if C.get(name) else pd.Series([None] * len(raw_pdf))
+
+fac = pd.DataFrame({
+    "row_id":      col("id").astype(str) if C["id"] else pd.Series(range(len(raw_pdf))).astype(str),
+    "name":        col("name").map(to_text),
+    "city":        col("city").map(to_text),
+    "district":    col("district").map(to_text),
+    "state":       col("state").map(to_text),
+    "postcode":    col("postcode").map(lambda v: re.sub(r"\D", "", to_text(v))[:6]),
+    "address":     [", ".join(x for x in parts if x) for parts in zip(col("address").map(to_text), col("address2").map(to_text), col("address3").map(to_text))],
+    "lat":         pd.to_numeric(col("lat"), errors="coerce"),
+    "lon":         pd.to_numeric(col("lon"), errors="coerce"),
+    "specialties": col("specialties").map(lambda v: [uncamel(x) for x in to_list(v)]),
+    "capability":  col("capability").map(to_list),
+    "procedure":   col("procedure").map(to_list),
+    "equipment":   col("equipment").map(to_list),
+    "description": col("description").map(to_text),
+    "doctors":     col("doctors").map(to_num),
+    "capacity":    col("capacity").map(to_num),
+    "year":        col("year").map(to_num),
+    "source_url":  [first_url(a, b) for a, b in zip(col("source_url"), col("website"))],
+    "phone":       col("phone").map(to_text),
+    "website":     col("website").map(lambda v: first_url(v)),
+    "facility_type": col("facility_type").map(lambda v: to_text(v).lower()),
+    "org_type":    col("org_type").map(lambda v: to_text(v).lower()),
+    "cluster":     col("cluster").map(to_text),
+    "last_post":   col("last_post").map(to_text),
+})
+# NGOs are organisations, not treatment sites. Keep them out of patient recommendations.
+fac = fac[fac["org_type"] != "ngo"].reset_index(drop=True)
+fac["city_n"] = fac["city"].map(norm_place)
+fac["district_n"] = fac["district"].map(norm_place)
+fac["state_n"] = fac["state"].map(norm_place)
+print(len(fac), "facilities loaded")
+fac.head(3)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 4. Data-quality checks (the "claims, not facts" part)
+# MAGIC Three problems from the brief, each turned into a flag:
+# MAGIC
+# MAGIC | Problem | Rule | Effect |
+# MAGIC |---|---|---|
+# MAGIC | **Impossible coordinates** | lat/lon outside India's bounding box (lat 6–37.5, lon 68–97.5) or exactly 0,0 | coordinates discarded; we fall back to the city's centre and say so |
+# MAGIC | **Contradictory location** | point is > 60 km from the median of other facilities that list the same city (only cities with ≥ 3 facilities) | −15 points and a warning |
+# MAGIC | **Duplicates / merged records** | several rows share a `cluster_id` (the dataset's own "these are the same place" grouping) or the same name + city; or the description talks about branches / a chain / multiple locations | warning; duplicates are collapsed in the results |
+# MAGIC
+# MAGIC The **haversine** formula below gives the great-circle distance between two lat/lon points (Earth radius ≈ 6371 km).
+# MAGIC Straight-line distance underestimates road distance, often by 1.3–1.5× in India. We say this to the user instead of hiding it.
+
+# COMMAND ----------
+
+def haversine_km(lat1, lon1, lat2, lon2):
+    lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+    a = np.sin((lat2 - lat1) / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2
+    return 6371.0 * 2 * np.arcsin(np.sqrt(a))
+
+in_india = fac["lat"].between(6, 37.5) & fac["lon"].between(68, 97.5) & ~((fac["lat"] == 0) & (fac["lon"] == 0))
+fac["coords_ok"] = in_india
+fac.loc[~in_india, ["lat", "lon"]] = np.nan
+
+# City centres from the data itself (median is robust to a few bad points)
+good = fac[fac["coords_ok"] & (fac["city_n"] != "")]
+city_stats = good.groupby("city_n").agg(c_lat=("lat", "median"), c_lon=("lon", "median"), n=("lat", "size")).reset_index()
+fac = fac.merge(city_stats, on="city_n", how="left")
+fac["km_from_city_centre"] = haversine_km(fac["lat"], fac["lon"], fac["c_lat"], fac["c_lon"])
+fac["location_conflict"] = (fac["n"] >= 3) & (fac["km_from_city_centre"] > 60)
+
+# Duplicates and possible merged records
+fac["name_n"] = fac["name"].map(lambda s: re.sub(r"[^a-z0-9]", "", s.lower()))
+# cluster_id is the dataset's own entity-resolution group; fall back to name+city when it's missing
+fac["dup_key"] = np.where(fac["cluster"] != "", "c:" + fac["cluster"], "n:" + fac["name_n"] + "|" + fac["city_n"])
+fac["dup_count"] = fac.groupby("dup_key")["row_id"].transform("count")
+MERGED_PAT = re.compile(r"\b(branches|chain of|group of hospitals|network of hospitals|multiple locations|units across|centres across|centers across)\b", re.I)
+fac["maybe_merged"] = fac["description"].map(lambda s: bool(MERGED_PAT.search(s)))
+
+print("bad/missing coords:", int((~fac['coords_ok']).sum()),
+      "| location conflicts:", int(fac['location_conflict'].sum()),
+      "| duplicate rows:", int((fac['dup_count'] > 1).sum()),
+      "| possibly merged:", int(fac['maybe_merged'].sum()))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 5. The service vocabulary (the knowledge we inject)
+# MAGIC For each service we write two kinds of terms:
+# MAGIC * **strong**: text that directly says the service is provided (a procedure, a dedicated unit, the specific machine).
+# MAGIC * **support**: things that make the service *plausible* but don't prove it (the specialty, enabling equipment).
+# MAGIC   Example: "nephrology" suggests dialysis but is not proof. A nephrologist may only run an outpatient clinic.
+# MAGIC
+# MAGIC `urgent=True` services (emergency C-section, trauma, burns) use a shorter distance scale, because time to treatment matters more there.
+# MAGIC `needs_hospital=True` marks services that need an operating theatre or intensive care. A record whose `facilityTypeId` is `clinic`
+# MAGIC claiming one of these is penalised (a small clinic claiming cardiac surgery is usually an extraction error or a referral).
+# MAGIC **This dictionary is the easiest thing to improve.** Read real records and add terms you see.
+
+# COMMAND ----------
+
+SERVICES = {
+    "dialysis": dict(
+        aliases=["dialysis", "kidney dialysis", "haemodialysis", "hemodialysis", "renal"],
+        strong=[r"h[a]?emodialysis", r"dialysis", r"\bcrrt\b", r"peritoneal dialysis", r"renal replacement"],
+        support=[r"nephrology", r"nephrologist", r"kidney", r"renal"],
+        urgent=False),
+    "emergency c-section": dict(
+        aliases=["c-section", "c section", "caesarean", "cesarean", "emergency c-section", "csection", "lscs"],
+        strong=[r"c[\s-]?section", r"ca?esarean", r"\blscs\b", r"emergency obstetric", r"\bcemonc\b", r"comprehensive emergency obstetric"],
+        support=[r"obstetric", r"gyn(a)?ecolog", r"maternity", r"labou?r room", r"operation theat(re|er)", r"\bot\b", r"anaesthe|anesthe", r"blood bank", r"24\s*[x/]\s*7|24 hours"],
+        urgent=True, needs_hospital=True),
+    "high-risk delivery": dict(
+        aliases=["high risk delivery", "high-risk pregnancy", "high risk pregnancy", "maternity", "delivery"],
+        strong=[r"high[\s-]?risk (pregnancy|delivery|obstetric)", r"maternal[\s-]fetal", r"fetal medicine", r"\bnicu\b", r"c[\s-]?section", r"ca?esarean"],
+        support=[r"obstetric", r"gyn(a)?ecolog", r"maternity", r"labou?r room", r"neonat", r"blood bank"],
+        urgent=True, needs_hospital=True),
+    "nicu": dict(
+        aliases=["nicu", "neonatal icu", "neonatal intensive care", "newborn icu", "sncu"],
+        strong=[r"\bnicu\b", r"neonatal intensive", r"\bsncu\b", r"special newborn care", r"neonatal ventilat"],
+        support=[r"neonat", r"paediatric|pediatric", r"incubator", r"phototherapy", r"radiant warmer"],
+        urgent=True, needs_hospital=True),
+    "cardiac surgery": dict(
+        aliases=["cardiac surgery", "heart surgery", "bypass", "cabg", "open heart"],
+        strong=[r"cardiac surg", r"cardiothoracic", r"\bcabg\b", r"bypass surgery", r"open[\s-]heart", r"valve replacement", r"\bctvs\b"],
+        support=[r"cardiolog", r"cath(eterization)? lab", r"angioplasty", r"heart[\s-]lung machine", r"\bccu\b"],
+        urgent=False, needs_hospital=True),
+    "mri": dict(
+        aliases=["mri", "magnetic resonance", "mri scan"],
+        strong=[r"\bmri\b", r"magnetic resonance", r"\b1\.5\s*t(esla)?\b", r"\b3\s*t(esla)?\b"],
+        support=[r"radiolog", r"imaging", r"\bct\b", r"diagnostic"],
+        urgent=False),
+    "ct scan": dict(
+        aliases=["ct", "ct scan", "cat scan", "computed tomography"],
+        strong=[r"\bct\b(?! ?valve)", r"ct scan", r"computed tomography", r"\bmdct\b", r"\d+[\s-]slice"],
+        support=[r"radiolog", r"imaging", r"diagnostic"],
+        urgent=False),
+    "burn care": dict(
+        aliases=["burn", "burns", "burn care", "burn unit"],
+        strong=[r"burns? (unit|ward|care|centre|center|icu)", r"burn management", r"skin graft"],
+        support=[r"plastic surg", r"reconstructive", r"\bicu\b", r"emergency"],
+        urgent=True, needs_hospital=True),
+    "trauma care": dict(
+        aliases=["trauma", "accident", "trauma care", "emergency trauma", "road accident"],
+        strong=[r"trauma (centre|center|care|unit|surgery)", r"\bpolytrauma\b", r"level[\s-]?[i1]+ trauma", r"casualty"],
+        support=[r"emergency", r"orthop(a)?edic", r"neurosurg", r"\bicu\b", r"ct scan|\bct\b", r"blood bank", r"24\s*[x/]\s*7|24 hours", r"ambulance"],
+        urgent=True, needs_hospital=True),
+    "icu": dict(
+        aliases=["icu", "intensive care", "critical care", "ventilator"],
+        strong=[r"\bicu\b", r"intensive care", r"critical care", r"ventilator"],
+        support=[r"emergency", r"anaesthe|anesthe", r"monitor"],
+        urgent=True, needs_hospital=True),
+}
+
+def resolve_service(user_text):
+    t = user_text.strip().lower()
+    for key, spec in SERVICES.items():
+        if t == key or t in spec["aliases"]:
+            return key
+    for key, spec in SERVICES.items():
+        if any(a in t or t in a for a in spec["aliases"] + [key]):
+            return key
+    raise ValueError(f"Unknown service '{user_text}'. Known: {list(SERVICES)}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 6. Evidence extraction and the evidence score
+# MAGIC For each facility we scan five fields. **Why these weights?** They follow *how specific* each field is. A listed procedure
+# MAGIC is a concrete claim about work done. A specialty is a broad category. The description is free marketing text, so it is
+# MAGIC useful for quotes but easy to inflate.
+# MAGIC
+# MAGIC | field | strong hit | support hit |
+# MAGIC |---|---|---|
+# MAGIC | procedure | 30 | 8 |
+# MAGIC | equipment | 25 | 8 |
+# MAGIC | capability | 25 | 6 |
+# MAGIC | description | 15 | 4 |
+# MAGIC | specialties | 10 | 6 |
+# MAGIC
+# MAGIC Each field counts **once** per kind of hit (ten mentions of "dialysis" in one description add no extra weight), so a record can't win by repetition.
+# MAGIC Then we add:
+# MAGIC * **+10 corroboration** if strong hits appear in ≥ 2 independent fields
+# MAGIC * **+5** if a doctor count is listed, **+5** if bed capacity is listed (these show a real, staffed site)
+# MAGIC * **+5** if an official phone or website is listed (the place exists and can be called to confirm)
+# MAGIC * **−10** if it's listed as a *clinic* but the service needs a hospital
+# MAGIC * **−15** for a location conflict, **−10** if the description suggests a merged or group record
+# MAGIC * a hit preceded by a negation ("no", "not available", "referred to") within a few words is **not counted** and is shown as a warning
+# MAGIC
+# MAGIC The score is clipped to 0–100. **Confidence** is a separate label because the user needs it in plain words:
+# MAGIC * **High**: strong hits in ≥ 2 fields, at least one of them structured (procedure / equipment / capability), and no location conflict
+# MAGIC * **Medium**: at least one strong hit in a structured field, or strong hits in description + specialty
+# MAGIC * **Low**: everything else (one weak mention, or only support evidence)
+
+# COMMAND ----------
+
+FIELD_W = {"procedure": (30, 8), "equipment": (25, 8), "capability": (25, 6), "description": (15, 4), "specialties": (10, 6)}
+STRUCTURED = {"procedure", "equipment", "capability"}
+NEG_PAT = re.compile(r"(\bno\b|\bnot\b|\bwithout\b|\bunavailable\b|\brefer(red|s)? (to|out)\b|\bcoming soon\b|\bplanned\b)[^.;]{0,25}$", re.I)
+
+def _snippet(text, m, width=90):
+    a, b = max(0, m.start() - width), min(len(text), m.end() + width)
+    s = text[a:b].replace("\n", " ")
+    return ("…" if a > 0 else "") + s + ("…" if b < len(text) else "")
+
+def find_hits(field_value, patterns):
+    """Return (list of (matched_term, quote), list of negated quotes)."""
+    items = field_value if isinstance(field_value, list) else [field_value]
+    hits, negated = [], []
+    for item in items:
+        if not item: continue
+        for p in patterns:
+            for m in re.finditer(p, item, re.I):
+                before = item[max(0, m.start() - 40): m.start()]
+                quote = item if len(item) <= 200 else _snippet(item, m)
+                (negated if NEG_PAT.search(before) else hits).append((m.group(0), quote))
+                break   # one hit per pattern per item is enough
+    # de-duplicate quotes
+    seen, uh = set(), []
+    for t, q in hits:
+        if q not in seen: seen.add(q); uh.append((t, q))
+    return uh, negated
+
+def score_facility(row, spec):
+    evidence, warnings, breakdown = [], [], []
+    strong_fields, support_fields = set(), set()
+    pts = 0
+    for field, (w_strong, w_support) in FIELD_W.items():
+        s_hits, s_neg = find_hits(row[field], spec["strong"])
+        if s_hits:
+            strong_fields.add(field); pts += w_strong
+            breakdown.append(f"+{w_strong} strong evidence in {field}")
+            evidence += [dict(field=field, kind="strong", term=t, quote=q) for t, q in s_hits[:2]]
+        else:
+            p_hits, _ = find_hits(row[field], spec["support"])
+            if p_hits:
+                support_fields.add(field); pts += w_support
+                breakdown.append(f"+{w_support} supporting evidence in {field}")
+                evidence += [dict(field=field, kind="support", term=t, quote=q) for t, q in p_hits[:1]]
+        for q in s_neg[:1]:
+            warnings.append(f"Possible negation in {field}: “{q[1][:160]}”")
+    if len(strong_fields) >= 2:
+        pts += 10; breakdown.append("+10 corroborated by ≥2 independent fields")
+    if pd.notna(row["doctors"]) and row["doctors"]:
+        pts += 5; breakdown.append(f"+5 doctor count listed ({int(row['doctors'])})")
+    if pd.notna(row["capacity"]) and row["capacity"]:
+        pts += 5; breakdown.append(f"+5 bed capacity listed ({int(row['capacity'])})")
+    if row["location_conflict"]:
+        pts -= 15; breakdown.append("−15 coordinates disagree with stated city")
+        warnings.append(f"Map location is {row['km_from_city_centre']:.0f} km from other facilities in {row['city']}. Verify the address.")
+    if row["maybe_merged"]:
+        pts -= 10; breakdown.append("−10 record may describe a hospital group, not one site")
+        warnings.append("Description mentions branches or a group. The service may be at a different branch.")
+    if spec.get("needs_hospital") and row["facility_type"] in ("clinic", "pharmacy", "doctor"):
+        pts -= 10; breakdown.append(f"−10 listed as a {row['facility_type']}; this service normally needs a hospital")
+        warnings.append(f"Listed as a {row['facility_type']}, which usually can't provide {spec['aliases'][0]}. Possibly a referral or a data error.")
+    if any(isinstance(row[k], str) and row[k] for k in ("phone", "website")):
+        pts += 5; breakdown.append("+5 contactable (official phone or website listed)")
+    if row["dup_count"] > 1:
+        warnings.append(f"This facility appears {int(row['dup_count'])} times in the dataset (possible duplicate records).")
+    if not row["coords_ok"]:
+        warnings.append("No valid coordinates. Distance is estimated from the city centre.")
+
+    structured_strong = strong_fields & STRUCTURED
+    if len(strong_fields) >= 2 and structured_strong and not row["location_conflict"]:
+        conf = "High"
+    elif structured_strong or {"description", "specialties"} <= strong_fields:
+        conf = "Medium"
+    else:
+        conf = "Low"
+    return dict(evidence_score=int(np.clip(pts, 0, 100)), confidence=conf, has_strong=bool(strong_fields),
+                strong_fields=sorted(strong_fields), support_fields=sorted(support_fields),
+                evidence=evidence, warnings=warnings, breakdown=breakdown)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 7. Understanding the location the user typed
+# MAGIC Free Edition notebooks have **restricted internet access**, so we can't call an external geocoder such as Google Maps.
+# MAGIC Instead we **geocode from the dataset itself**: a city's position is the median coordinate of the facilities in that city.
+# MAGIC
+# MAGIC Accepted inputs, in order of precision:
+# MAGIC 1. `lat,lon`, e.g. `26.9124, 75.7873`: exact
+# MAGIC 2. a 6-digit **PIN code**: median of facilities with that PIN. If there are none, we use the first 3 digits (a postal sorting district), which is approximate.
+# MAGIC 3. a **city / district / state name**: exact match first, then fuzzy match (handles typos and spellings like "Bengaluru" vs "Bangalore" if both appear in the data)
+
+# COMMAND ----------
+
+import difflib
+
+ALT_NAMES = {"bangalore": "bengaluru", "bombay": "mumbai", "madras": "chennai", "calcutta": "kolkata",
+             "gurgaon": "gurugram", "poona": "pune", "trivandrum": "thiruvananthapuram", "baroda": "vadodara"}
+
+def resolve_location(text):
+    t = text.strip()
+    m = re.match(r"^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$", t)
+    if m:
+        return dict(lat=float(m.group(1)), lon=float(m.group(3)), label=f"coordinates {t}", precision="exact point")
+    digits = re.sub(r"\D", "", t)
+    if len(digits) == 6 and len(digits) >= len(t.replace(" ", "")) - 1:
+        g = fac[(fac["postcode"] == digits) & fac["coords_ok"]]
+        if len(g):
+            return dict(lat=g["lat"].median(), lon=g["lon"].median(), label=f"PIN {digits}",
+                        precision=f"centre of {len(g)} facilities in PIN {digits}")
+        g = fac[fac["postcode"].str.startswith(digits[:3]) & fac["coords_ok"]]
+        if len(g):
+            return dict(lat=g["lat"].median(), lon=g["lon"].median(), label=f"PIN area {digits[:3]}xxx",
+                        precision=f"approximate: no facility has PIN {digits}, used the {digits[:3]}xxx postal area ({len(g)} facilities)")
+        raise ValueError(f"No facilities found near PIN {digits}")
+    q = norm_place(t)
+    candidates = [q] + ([ALT_NAMES[q]] if q in ALT_NAMES else []) + [k for k, v in ALT_NAMES.items() if v == q]
+    for level in ["city_n", "district_n", "state_n"]:
+        for cand in candidates:
+            g = fac[(fac[level] == cand) & fac["coords_ok"]]
+            if len(g):
+                return dict(lat=g["lat"].median(), lon=g["lon"].median(), label=t.title(),
+                            precision=f"centre of {len(g)} facilities listed in {level.replace('_n','')} '{cand}'")
+    names = sorted((set(fac["city_n"]) | set(fac["district_n"])) - {""})
+    close = difflib.get_close_matches(q, names, n=1, cutoff=0.8)
+    if close:
+        r = resolve_location(close[0])
+        r["precision"] += f" (interpreted '{t}' as '{close[0]}')"
+        return r
+    raise ValueError(f"Couldn't find '{t}' in the data. Try a nearby city, a PIN code, or 'lat,lon'.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 8. Ranking: trading evidence against distance
+# MAGIC `proximity = 100 · exp(−distance / scale)`. At distance 0 this is 100. At `scale` km it is about 37. At 3× `scale` it is about 5.
+# MAGIC We use an exponential so that nearby differences matter most and far-away differences fade out.
+# MAGIC * urgent services: `scale = 25 km`, search radius up to 150 km
+# MAGIC * planned services: `scale = 75 km`, search radius up to 400 km
+# MAGIC
+# MAGIC `final = 0.6 · evidence + 0.4 · proximity`.
+# MAGIC **The trade-off we chose:** evidence gets slightly more weight than distance, because sending a patient to a closer place
+# MAGIC that turns out *not* to offer the service costs more time than a slightly longer trip to a well-evidenced one.
+# MAGIC A facility needs **at least one strong hit** to qualify. Support-only facilities are shown separately as "unverified leads",
+# MAGIC and only if there are fewer than 3 qualified options. If nothing is within the radius, we double the radius once and say so.
+
+# COMMAND ----------
+
+W_EVIDENCE, W_PROX = 0.6, 0.4
+
+def recommend(service_text, location_text, top_k=5):
+    svc = resolve_service(service_text); spec = SERVICES[svc]
+    loc = resolve_location(location_text)
+    scale, radius = (25, 150) if spec["urgent"] else (75, 400)
+
+    # Use real coordinates when valid; otherwise fall back to the city centre (and say so in warnings)
+    lat = fac["lat"].fillna(fac["c_lat"]); lon = fac["lon"].fillna(fac["c_lon"])
+    dist = pd.Series(haversine_km(loc["lat"], loc["lon"], lat, lon), index=fac.index)
+
+    notes = []
+    for attempt in range(2):
+        near = fac[dist <= radius]
+        if len(near): break
+        radius *= 2; notes.append(f"Nothing within the first radius; widened the search to {radius} km.")
+
+    rows = []
+    for idx, r in near.iterrows():
+        s = score_facility(r, spec)
+        if not s["evidence"]: continue
+        d = float(dist[idx])
+        prox = 100 * math.exp(-d / scale)
+        rows.append({**{k: r[k] for k in ["row_id", "name", "city", "state", "postcode", "address", "source_url", "name_n", "dup_key", "doctors", "capacity", "year", "coords_ok", "phone", "website", "facility_type", "last_post"]},
+                     **s, "distance_km": round(d, 1), "proximity_score": round(prox, 1),
+                     "final_score": round(W_EVIDENCE * s["evidence_score"] + W_PROX * prox, 1)})
+    res = pd.DataFrame(rows)
+    if res.empty:
+        return dict(service=svc, location=loc, results=res, leads=res, notes=notes + ["No facility mentions this service nearby."])
+    # collapse duplicate records of the same facility: keep the best-scoring row
+    res = res.sort_values("final_score", ascending=False).drop_duplicates("dup_key")
+    qualified = res[res["has_strong"]].head(top_k)
+    leads = res[~res["has_strong"]].head(max(0, 3 - len(qualified))) if len(qualified) < 3 else res.iloc[0:0]
+    return dict(service=svc, location=loc, results=qualified, leads=leads, notes=notes,
+                params=dict(scale_km=scale, radius_km=radius, w_evidence=W_EVIDENCE, w_proximity=W_PROX))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 9. Presenting results for non-technical users
+# MAGIC `displayHTML` renders plain HTML cards in the notebook output. Each card answers **WHY** (quoted evidence with the field it came from)
+# MAGIC and **HOW** (the score breakdown), and uses plain-language confidence and warnings.
+
+# COMMAND ----------
+
+CONF_COLOR = {"High": "#1a7f37", "Medium": "#9a6700", "Low": "#cf222e"}
+
+def render(out):
+    e = html.escape
+    loc, svc = out["location"], out["service"]
+    parts = [f"""<div style="font-family:system-ui,sans-serif;max-width:900px">
+    <h2 style="margin-bottom:4px">{e(svc.title())} near {e(loc['label'])}</h2>
+    <div style="color:#555;font-size:13px">Location used: {e(loc['precision'])}. Distances are straight-line; road distance is usually 30–50% longer.
+    Always phone the facility to confirm before travelling. This data comes from websites and has not been verified.</div>"""]
+    for n in out["notes"]:
+        parts.append(f"<p><b>Note:</b> {e(n)}</p>")
+
+    def sv(x):
+        return "" if x is None or (isinstance(x, float) and x != x) else str(x)
+
+    def card(i, r, lead=False):
+        ev = "".join(f"<li><b>{e(x['field'])}</b> ({'direct' if x['kind']=='strong' else 'indirect'}): “{e(x['quote'][:220])}”</li>" for x in r["evidence"])
+        wr = "".join(f"<li>{e(w)}</li>" for w in r["warnings"]) or "<li>None found</li>"
+        bd = "".join(f"<li>{e(b)}</li>" for b in r["breakdown"])
+        src = f'<a href="{e(sv(r["source_url"]))}" target="_blank">source</a>' if sv(r["source_url"]) else "no source URL in record"
+        addr = ", ".join(sv(x) for x in [r["address"], r["city"], r["state"], r["postcode"]] if sv(x))
+        conf = "Unverified lead" if lead else r["confidence"] + " confidence"
+        color = "#6e7781" if lead else CONF_COLOR[r["confidence"]]
+        return f"""<div style="border:1px solid #d0d7de;border-left:6px solid {color};border-radius:6px;padding:12px;margin:12px 0">
+        <div style="font-size:17px"><b>{i}. {e(r['name'])}</b> <span style="color:{color};font-weight:600">· {conf}</span></div>
+        <div style="color:#444">{e(addr)} · <b>{'' if r['coords_ok'] else '≈'}{r['distance_km']} km</b> away{'' if r['coords_ok'] else ' (estimated from city centre)'} · {src}</div>
+        <div style="color:#444;font-size:13px">Type: {e(sv(r['facility_type']) or 'unknown')} · Phone: {e(sv(r['phone']) or 'not listed')}{(' · Beds: ' + str(int(r['capacity']))) if sv(r['capacity']) else ''}{(' · Doctors: ' + str(int(r['doctors']))) if sv(r['doctors']) else ''}{(' · Last social post: ' + e(sv(r['last_post']))) if sv(r['last_post']) else ''}</div>
+        <div style="margin-top:6px"><b>WHY this facility. What the record says:</b><ul style="margin:4px 0">{ev}</ul></div>
+        <div><b>Cautions:</b><ul style="margin:4px 0">{wr}</ul></div>
+        <details><summary><b>HOW it was scored</b>: final {r['final_score']} = 0.6 × evidence {r['evidence_score']} + 0.4 × proximity {r['proximity_score']}</summary>
+        <ul>{bd}</ul></details></div>"""
+
+    if out["results"].empty:
+        parts.append("<p><b>No facility in the data clearly claims this service nearby.</b></p>")
+    for i, (_, r) in enumerate(out["results"].iterrows(), 1):
+        parts.append(card(i, r))
+    if len(out["leads"]):
+        parts.append("<h3>Unverified leads</h3><div style='color:#555'>These mention related services only. Call to ask.</div>")
+        for i, (_, r) in enumerate(out["leads"].iterrows(), 1):
+            parts.append(card(i, r, lead=True))
+    parts.append("</div>")
+    return "".join(parts)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 10. Run it: the user interface
+# MAGIC `dbutils.widgets` adds input boxes at the top of the notebook. Change them, then run this cell (Shift+Enter).
+
+# COMMAND ----------
+
+dbutils.widgets.dropdown("service", "dialysis", list(SERVICES.keys()), "Service")
+dbutils.widgets.text("location", "Jaipur", "Location (city, PIN, or lat,lon)")
+
+out = recommend(dbutils.widgets.get("service"), dbutils.widgets.get("location"))
+displayHTML(render(out))
+
+# COMMAND ----------
+
+# The same results as a table (sortable; use the + next to the table to add a chart or map)
+if not out["results"].empty:
+    display(out["results"][["name", "city", "distance_km", "confidence", "evidence_score", "proximity_score", "final_score", "strong_fields", "source_url"]])
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 11. Sanity checks on the brief's example questions
+# MAGIC Read these cards and judge whether they make sense. That is your validation. With no labels, **human spot-checks are the
+# MAGIC test set**: pick ~20 results, open the source URL, and record whether the claim holds up. Report that precision in your presentation.
+
+# COMMAND ----------
+
+for svc, place in [("dialysis", "Jaipur"), ("emergency c-section", "Lucknow"), ("trauma care", "Pune"), ("high-risk delivery", "Mumbai")]:
+    try:
+        displayHTML(render(recommend(svc, place, top_k=3)))
+    except ValueError as err:
+        print(svc, place, "->", err)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 12. (Optional) Save a scored table for a Dashboard or Genie space
+# MAGIC This scores **every facility for every service** once and writes it to `workspace.default.facility_service_evidence`.
+# MAGIC Then: **SQL Editor / Dashboards** can chart it, or **Genie** (left sidebar) can answer "which districts in Maharashtra have no
+# MAGIC high-confidence NICU?" in plain English. Each row keeps the quotes, so citations survive.
+
+# COMMAND ----------
+
+records = []
+for svc, spec in SERVICES.items():
+    for _, r in fac.iterrows():
+        s = score_facility(r, spec)
+        if not s["evidence"]: continue
+        records.append(dict(service=svc, row_id=r["row_id"], name=r["name"], city=r["city"], state=r["state"],
+                            postcode=r["postcode"], lat=r["lat"] if r["coords_ok"] else None, lon=r["lon"] if r["coords_ok"] else None,
+                            facility_type=r["facility_type"], evidence_score=s["evidence_score"], confidence=s["confidence"], has_strong_evidence=s["has_strong"],
+                            evidence_fields=", ".join(s["strong_fields"] + s["support_fields"]),
+                            evidence_quotes=" | ".join(f"[{x['field']}] {x['quote'][:200]}" for x in s["evidence"]),
+                            warnings=" | ".join(s["warnings"]), score_breakdown="; ".join(s["breakdown"]),
+                            source_url=r["source_url"]))
+scored = pd.DataFrame(records)
+spark.createDataFrame(scored).write.mode("overwrite").option("overwriteSchema", "true") \
+     .saveAsTable(f"{OUTPUT_SCHEMA}.facility_service_evidence")
+print(len(scored), "rows saved")
+display(spark.sql(f"""SELECT service, confidence, count(*) n FROM {OUTPUT_SCHEMA}.facility_service_evidence
+                      GROUP BY ALL ORDER BY service, confidence"""))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 13. (Optional) An LLM second opinion on the top results, with a hallucination guard
+# MAGIC Keyword rules can't read context ("we refer dialysis patients to X"). An LLM can. Free Edition has pay-per-token
+# MAGIC **Foundation Model** endpoints (see **Serving** in the sidebar for the exact names in your workspace). The SQL function `ai_query` calls one.
+# MAGIC
+# MAGIC The guard: we ask for a verdict **plus an exact quote**, and we **accept the verdict only if that quote really appears in the record**.
+# MAGIC An LLM can invent text, but it can't fake a substring check. The LLM only adjusts the label. It never adds facilities.
+
+# COMMAND ----------
+
+LLM_ENDPOINT = "databricks-meta-llama-3-3-70b-instruct"   # change to a name listed under Serving if this one isn't available
+
+def llm_verify(out, service):
+    if out["results"].empty: return out["results"]
+    ids = set(out["results"]["row_id"])
+    sub = fac[fac["row_id"].isin(ids)].copy()
+    sub["record"] = sub.apply(lambda r: f"NAME: {r['name']}\nPROCEDURES: {r['procedure']}\nEQUIPMENT: {r['equipment']}\n"
+                                         f"CAPABILITIES: {r['capability']}\nSPECIALTIES: {r['specialties']}\nDESCRIPTION: {r['description'][:2500]}", axis=1)
+    spark.createDataFrame(sub[["row_id", "record"]]).createOrReplaceTempView("cands")
+    prompt = (f"You verify hospital records. Does this facility itself provide {service}? "
+              "Answer ONLY JSON: {\"verdict\": \"yes\"|\"no\"|\"unclear\", \"quote\": \"<exact words copied from the record>\"}. Record:\\n")
+    resp = spark.sql(f"""SELECT row_id, record, ai_query('{LLM_ENDPOINT}', concat('{prompt.replace("'", "''")}', record)) AS answer FROM cands""").toPandas()
+    def check(r):
+        try:
+            j = json.loads(re.search(r"\{.*\}", r["answer"], re.S).group(0))
+            ok = j.get("quote", "").strip() and j["quote"].strip().lower() in r["record"].lower()
+            return pd.Series({"llm_verdict": j.get("verdict") if ok else "rejected (quote not found in record)", "llm_quote": j.get("quote")})
+        except Exception:
+            return pd.Series({"llm_verdict": "unparseable", "llm_quote": None})
+    return resp.join(resp.apply(check, axis=1))[["row_id", "llm_verdict", "llm_quote"]].merge(
+        out["results"][["row_id", "name", "confidence"]], on="row_id")
+
+try:
+    display(llm_verify(out, out["service"]))
+except Exception as err:
+    print("LLM step skipped:", str(err)[:300])
