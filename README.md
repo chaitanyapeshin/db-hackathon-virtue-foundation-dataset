@@ -4,7 +4,7 @@
 
 **CMU Datathon Fall 2026 · Databricks × Virtue Foundation · "Find the right care" challenge**
 
-![Swasthya Saathi overview](images/swasthya_saathi_slide.png)
+![Swasthya Saathi overview](images/swasthya_saathi_slide_final.png)
 
 > *"Accident hua hai, behosh hai — kahan le jaayein?"* (There's been an accident, he's unconscious — where do we go?)
 >
@@ -206,7 +206,7 @@ All capability metrics are on a **held-out test fold of government-labelled faci
 | **CGHS** Delhi NCR empanelled hospitals (2022) | Referee labels (services empanelled for), NABH status | Public government documents |
 | Haryana PM-JAY / CCHF **de-empanelled, suspended, withdrawn** lists | Negative evidence, "no longer accepts the card" | Public government documents |
 
-The extracted, cleaned CSVs are in [`government_lists/`](government_lists/). One scanned list (Agra) was excluded because OCR could not reliably recover the hospital IDs.
+One scanned list (Agra) was excluded because OCR could not reliably recover the hospital IDs.
 
 ---
 
@@ -307,6 +307,5 @@ The extracted, cleaned CSVs are in [`government_lists/`](government_lists/). One
 
 ## 12. Team
 
-*Add team member names here.*
 
-*Built for the CMU Datathon Fall 2026. Facility data © Virtue Foundation; public government data under the Government Open Data License – India where applicable. Swasthya Saathi is a decision-support prototype, not medical advice: in an emergency, call **108**.*
+*Built for the CMU Databricks Datathon Fall 2026. Facility data © Virtue Foundation; public government data under the Government Open Data License – India where applicable. Swasthya Saathi is a decision-support prototype, not medical advice: in an emergency, call **108**.*
