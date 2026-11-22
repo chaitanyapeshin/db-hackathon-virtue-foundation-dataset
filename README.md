@@ -59,9 +59,6 @@ A confident wrong answer costs a patient hours they don't have. So we treat ever
 
 ## 3. Demo
 
-### Patient / field-worker flow (notebook dashboard)
-![Dashboard demo](images/demo_dashboard.gif)
-
 Input: *"papa ke pair sooj gaye, doctor ne dialysis bola"*, location *Jaipur*. Output: a Hindi action plan first (where to go, phone number, backup, Ayushman status, odds), then the full English **WHY / HOW**.
 
 ### Genie agent (patients, NGOs, planners)
