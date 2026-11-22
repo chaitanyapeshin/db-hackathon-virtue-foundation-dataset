@@ -1,12 +1,16 @@
 # स्वास्थ्य साथी · Swasthya Saathi
 
-### The right care, in time - with reasons you can trust
+### The right care, in time — with reasons you can trust
 
 **CMU Datathon Fall 2026 · Databricks × Virtue Foundation · "Find the right care" challenge**
 
 ![Swasthya Saathi overview](images/swasthya_saathi_slide_final.png)
 
-> *"Accident hua hai, behosh hai - kahan le jaayein?"* (There's been an accident, he's unconscious — where do we go?)
+🎬 **Demo video (2 min):** [▶ Watch on YouTube](https://youtu.be/TXWzxnP8u2Q) · 🧭 **Pipeline explainer video:** [▶ saathi_pipeline_explainer.mp4](images/saathi_pipeline_explainer.mp4)
+
+[![Watch the demo](https://img.youtube.com/vi/TXWzxnP8u2Q/maxresdefault.jpg)](https://youtu.be/TXWzxnP8u2Q)
+
+> *"Accident hua hai, behosh hai — kahan le jaayein?"* (There's been an accident, he's unconscious — where do we go?)
 >
 > *"Papa ko dialysis chahiye — Ayushman card chalega?"* (Papa needs dialysis — will the Ayushman card work?)
 
@@ -59,10 +63,15 @@ A confident wrong answer costs a patient hours they don't have. So we treat ever
 
 ## 3. Demo
 
+🎬 **Full walkthrough video (2 min):** [▶ YouTube](https://youtu.be/TXWzxnP8u2Q). It covers the approach, the notebook dashboard and the Genie agent.
+
+### Patient / field-worker flow (notebook dashboard)
+
 Input: *"papa ke pair sooj gaye, doctor ne dialysis bola"*, location *Jaipur*. Output: a Hindi action plan first (where to go, phone number, backup, Ayushman status, odds), then the full English **WHY / HOW**.
 
 ### Genie agent (patients, NGOs, planners)
 ![Genie demo](images/swasthya_saathi_gif_genie.gif)
+
 
 | Patient-style questions in Hinglish | NGO / planner questions |
 |---|---|
@@ -77,6 +86,10 @@ Example questions that work in Genie:
 ---
 
 ## 4. Approach
+
+![Offline and online pipeline in detail](images/swasthya_saathi_slide_supp.png)
+
+🧭 **Animated walkthrough of this pipeline:** [saathi_pipeline_explainer.mp4](images/saathi_pipeline_explainer.mp4)
 
 The system has two halves.
 - **Offline** builds trust in the data once and writes it to Delta tables. It answers *"can this facility really do it?"*
@@ -203,7 +216,7 @@ All capability metrics are on a **held-out test fold of government-labelled faci
 | **CGHS** Delhi NCR empanelled hospitals (2022) | Referee labels (services empanelled for), NABH status | Public government documents |
 | Haryana PM-JAY / CCHF **de-empanelled, suspended, withdrawn** lists | Negative evidence, "no longer accepts the card" | Public government documents |
 
-One scanned list (Agra) was excluded because OCR could not reliably recover the hospital IDs.
+The extracted, cleaned CSVs are in [`government_lists/`](government_lists/). One scanned list (Agra) was excluded because OCR could not reliably recover the hospital IDs.
 
 ---
 
@@ -217,11 +230,12 @@ One scanned list (Agra) was excluded because OCR could not reliably recover the 
 │   ├── nabh_delhi_ncr_from_cghs.csv
 │   └── deempanel_*.csv             #   de-empanelled / suspended / withdrawn
 ├── images/
-│   ├── swasthya_saathi_slide.png
+│   ├── swasthya_saathi_slide_final.png        # overview slide
+│   ├── swasthya_saathi_slide_supp.png         # detailed offline / online pipeline
 │   ├── genie_patient_chat.png
 │   ├── genie_planner_chat.png
-│   ├── demo_dashboard.gif
-│   └── genie_demo.gif
+│   ├── swasthya_saathi_gif_genie.gif          # Genie agent demo
+│   └── saathi_pipeline_explainer.mp4          # pipeline explainer video
 └── README.md
 ```
 
@@ -261,7 +275,7 @@ One scanned list (Agra) was excluded because OCR could not reliably recover the 
    - Boolean columns are stored as text `'True'` / `'False'`. Never invent facilities or phone numbers.
 4. Add the example questions from [Demo](#3-demo) as **Examples**, with their SQL.
 
-> Genie spaces are only accessible to users of the workspace. Screenshots and GIFs above show the live agent.
+> Genie spaces are only accessible to users of the workspace. The screenshots, GIF and demo video above show the live agent.
 
 ---
 
@@ -303,6 +317,7 @@ One scanned list (Agra) was excluded because OCR could not reliably recover the 
 ---
 
 ## 12. Team
+
 Chaitanya Peshin, Upendra Yanamandra, Rahul Krishna
 
 *Built for the CMU Databricks Datathon Fall 2026. Facility data © Virtue Foundation; public government data under the Government Open Data License – India where applicable. Swasthya Saathi is a decision-support prototype, not medical advice: in an emergency, call **108**.*
