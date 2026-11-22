@@ -1,12 +1,12 @@
 # स्वास्थ्य साथी · Swasthya Saathi
 
-### The right care, in time — with reasons you can trust
+### The right care, in time - with reasons you can trust
 
 **CMU Datathon Fall 2026 · Databricks × Virtue Foundation · "Find the right care" challenge**
 
 ![Swasthya Saathi overview](images/swasthya_saathi_slide_final.png)
 
-> *"Accident hua hai, behosh hai — kahan le jaayein?"* (There's been an accident, he's unconscious — where do we go?)
+> *"Accident hua hai, behosh hai - kahan le jaayein?"* (There's been an accident, he's unconscious — where do we go?)
 >
 > *"Papa ko dialysis chahiye — Ayushman card chalega?"* (Papa needs dialysis — will the Ayushman card work?)
 
