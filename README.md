@@ -89,7 +89,10 @@ Example questions that work in Genie:
 
 ![Offline and online pipeline in detail](images/swasthya_saathi_slide_supp.png)
 
-🧭 **Animated walkthrough of this pipeline:** [saathi_pipeline_explainer.mp4](images/saathi_pipeline_explainer.mp4)
+### 🧭 Pipeline explainer (2 min)
+[![Pipeline explainer](images/saathi_pipeline_explainer.gif)](images/saathi_pipeline_explainer.mp4)
+
+*Click the animation for the full-quality video.*
 
 The system has two halves.
 - **Offline** builds trust in the data once and writes it to Delta tables. It answers *"can this facility really do it?"*
@@ -235,7 +238,8 @@ The extracted, cleaned CSVs are in [`government_lists/`](government_lists/). One
 │   ├── genie_patient_chat.png
 │   ├── genie_planner_chat.png
 │   ├── swasthya_saathi_gif_genie.gif          # Genie agent demo
-│   └── saathi_pipeline_explainer.mp4          # pipeline explainer video
+│   ├── saathi_pipeline_explainer.mp4          # pipeline explainer video
+│   └── saathi_pipeline_explainer.gif          # same, as an embedded animation
 └── README.md
 ```
 
